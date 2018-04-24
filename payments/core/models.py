@@ -11,6 +11,7 @@ PAYMENT_DIRECTION_CHOICES = tuple((_d, _d) for _d in PAYMENT_DIRECTIONS)
 class Account(models.Model):
     class Meta:
         verbose_name = "Account"
+        ordering = ['pk']
 
     id = models.CharField(verbose_name=ugettext_lazy("Account ID"), max_length=200, primary_key=True)
     owner = models.CharField(verbose_name=ugettext_lazy("Account owner ID"), max_length=200)
@@ -21,6 +22,7 @@ class Account(models.Model):
 class Payment(models.Model):
     class Meta:
         verbose_name = "Payment"
+        ordering = ['-pk']
 
     to_account = models.ForeignKey(
         Account, verbose_name="Payment destination account", on_delete=models.PROTECT,
