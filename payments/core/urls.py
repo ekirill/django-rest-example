@@ -4,6 +4,7 @@ from django.urls import include
 
 v1_patterns = [
     url(r'^accounts$', views.AccountsList.as_view()),
+    url(r'^payments$', views.PaymentsList.as_view()),
 ]
 
 urlpatterns = [

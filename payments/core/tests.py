@@ -102,3 +102,60 @@ class AccountsTestCase(TestCase):
         self.assertEqual(outgoing_payment.currency, CURRENCY_PHP)
         self.assertEqual(outgoing_payment.from_account, self.from_account)
         self.assertEqual(outgoing_payment.direction, PAYMENT_DIRECTIONS_OUTGOING)
+
+
+class PaymentsTestCase(TestCase):
+    payments_url = '/v1/payments'
+
+    def setUp(self):
+        self.client = APIClient()
+
+        self.owner_1 = 'owner_1'
+        self.owner_2 = 'owner_2'
+
+        self.accounts = (
+            Account(id='acc_1', owner=self.owner_1, balance=0, currency=CURRENCY_PHP),
+            Account(id='acc_2', owner=self.owner_2, balance=200, currency=CURRENCY_PHP),
+        )
+        Account.objects.bulk_create(self.accounts)
+
+        self.accounts[1].pay(self.accounts[0], Decimal(50), CURRENCY_PHP)
+        self.payments = list(Payment.objects.all())
+
+    def test_payments_list_methods(self):
+        response = self.client.put(self.payments_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.post(self.payments_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.patch(self.payments_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.delete(self.payments_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.get(self.payments_url, format='json')
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.options(self.payments_url, format='json')
+        self.assertEqual(response.status_code, 200)
+
+    def _check_result_item(self, item, orig_payment):
+        self.assertEqual(
+            list(sorted(item.keys())),
+            list(sorted(['to_account', 'from_account', 'direction', 'amount', 'currency']))
+        )
+        self.assertEqual(item['to_account'], orig_payment.to_account.pk)
+        self.assertEqual(item['from_account'], orig_payment.from_account.pk)
+        self.assertEqual(item['direction'], orig_payment.direction)
+        self.assertEqual(Decimal(item['amount']), orig_payment.amount)
+        self.assertEqual(item['currency'], orig_payment.currency)
+
+    def test_payments_api_list(self):
+        response = self.client.get(self.payments_url, format='json')
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertEqual(len(result), 2)
+        for item, orig_payment in zip(result, self.payments):
+            self._check_result_item(item, orig_payment)
