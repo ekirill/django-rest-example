@@ -23,6 +23,25 @@ class AccountsTestCase(TestCase):
         )
         Account.objects.bulk_create(self.accounts)
 
+    def test_accounts_list_methods(self):
+        response = self.client.put(self.accounts_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.post(self.accounts_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.patch(self.accounts_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.delete(self.accounts_url, format='json')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.client.get(self.accounts_url, format='json')
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.options(self.accounts_url, format='json')
+        self.assertEqual(response.status_code, 200)
+
     def _check_result_item(self, item, orig_account):
         self.assertEqual(list(sorted(item.keys())), list(sorted(['id', 'owner', 'balance', 'currency'])))
         self.assertEqual(item['id'], orig_account.id)
