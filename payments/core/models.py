@@ -59,6 +59,8 @@ class Account(models.Model):
             to_account.save(update_fields=('balance',))
             Payment.objects.bulk_create(payments)
 
+        return payments
+
 
 class Payment(models.Model):
     class Meta:

@@ -122,11 +122,15 @@ class PaymentsTestCase(TestCase):
         self.accounts[1].pay(self.accounts[0], Decimal(50), CURRENCY_PHP)
         self.payments = list(Payment.objects.all())
 
+        self.creation_data_json = {
+            'from_account': self.accounts[1].pk,
+            'to_account': self.accounts[0].pk,
+            'amount': '1.5005',
+            'currency': CURRENCY_PHP,
+        }
+
     def test_payments_list_methods(self):
         response = self.client.put(self.payments_url, format='json')
-        self.assertEqual(response.status_code, 405)
-
-        response = self.client.post(self.payments_url, format='json')
         self.assertEqual(response.status_code, 405)
 
         response = self.client.patch(self.payments_url, format='json')
@@ -140,6 +144,9 @@ class PaymentsTestCase(TestCase):
 
         response = self.client.options(self.payments_url, format='json')
         self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(self.payments_url, data=self.creation_data_json, format='json')
+        self.assertEqual(response.status_code, 201)
 
     def _check_result_item(self, item, orig_payment):
         self.assertEqual(
@@ -159,3 +166,32 @@ class PaymentsTestCase(TestCase):
         self.assertEqual(len(result), 2)
         for item, orig_payment in zip(result, self.payments):
             self._check_result_item(item, orig_payment)
+
+    def test_payment_creation_api(self):
+        response = self.client.post(self.payments_url, data=self.creation_data_json, format='json')
+        result = response.json()
+        self.assertEqual(result, {'status': 'CREATED'})
+
+        # 2 payments were created at setUp
+        self.assertEqual(Payment.objects.count(), 4)
+
+        outgoing_payment = Payment.objects.filter(
+            from_account__pk=self.creation_data_json['from_account'],
+        ).first()  # default ordering is desc
+        self.assertEqual(outgoing_payment.to_account_id, self.creation_data_json['to_account'])
+        self.assertEqual(outgoing_payment.from_account_id, self.creation_data_json['from_account'])
+        self.assertEqual(outgoing_payment.direction, PAYMENT_DIRECTIONS_OUTGOING)
+        self.assertEqual(outgoing_payment.amount, Decimal(self.creation_data_json['amount']))
+        self.assertEqual(outgoing_payment.currency, self.creation_data_json['currency'])
+
+        incoming_payment = Payment.objects.filter(
+            from_account__pk=self.creation_data_json['to_account'],
+        ).first()  # default ordering is desc
+        self.assertEqual(incoming_payment.to_account_id, self.creation_data_json['from_account'])
+        self.assertEqual(incoming_payment.from_account_id, self.creation_data_json['to_account'])
+        self.assertEqual(incoming_payment.direction, PAYMENT_DIRECTIONS_INCOMING)
+        self.assertEqual(incoming_payment.amount, Decimal(self.creation_data_json['amount']))
+        self.assertEqual(incoming_payment.currency, self.creation_data_json['currency'])
+
+        self.assertEqual(outgoing_payment.to_account.balance, Decimal('51.5005'))
+        self.assertEqual(outgoing_payment.from_account.balance, Decimal('148.4995'))
